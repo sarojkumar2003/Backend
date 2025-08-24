@@ -1,140 +1,75 @@
-// console.log("server file is running");
+// ---------------------- Load Environment Variables ----------------------
+require('dotenv').config(); // Loads variables from .env file
 
-// function add (a, b){
-//     return a+b;
-// }
+// ---------------------- Import Core Dependencies ----------------------
+const express = require('express');             // Express framework
+const bodyParser = require('body-parser');      // Middleware to parse JSON data
+const passport = require('passport');           // Passport for authentication
+const LocalStrategy = require('passport-local').Strategy; // Local strategy for username/password login
 
+// ---------------------- Import Database Connection ----------------------
+const db = require('./db'); // Connects to MongoDB (configured in db.js)
 
-// ### SECOND TYPE OF FUCTIN ###
-// let add = function(a, b){
-//     return a+b
-// }
+// ---------------------- Import Models ----------------------
+const Person = require('./module/Person'); // Mongoose model for "Person" collection
 
-// #### THIRD TYPE OF FUNCTON ###
-// var add = (a,b) =>{
-//     return a+b
-// }
+// ---------------------- Import Routes ----------------------
+const personRoutes = require('./Routes/personRoutes'); // Routes for person CRUD operations
+const menuRoutes = require('./Routes/menuRouter');     // Routes for menu CRUD operations
 
-// #### FOUR TYPE OF FUNCTION ###
-// var add = (a,b) => a+b;
-// let result  = add(2,3)
-// console.log(result);
+// ---------------------- Initialize Express ----------------------
+const app = express();
+const PORT = process.env.PORT || 3000;
 
+// ---------------------- Middleware ----------------------
+app.use(bodyParser.json()); // Parse incoming request bodies as JSON
 
+// ---------------------- Configure Passport Authentication ----------------------
+passport.use(
+  new LocalStrategy(async (username, password, done) => {
+    try {
+      console.log("Received username & password:", username, password);
 
-// ------------ ****** Server Create ****** ------------
+      // Find user in DB by username
+      const user = await Person.findOne({ username });
 
-const express = require('express')
-const app = express()
-// const port = 3000
-const PORT =  process.env.PORT || 3000;
-require('dotenv').config(); //.env file required where we used 
+      // If user not found
+      if (!user) {
+        return done(null, false, { message: "User not found!" });
+      }
 
-const db = require('./db');
-// const Person = require('./module/Person');
-// const Menu = require('./module/Menu');
-const bodyParser = require('body-parser'); // ✅ Node.js module names are case-sensitive.
-app.use(bodyParser.json());
+      // Check if password matches (plain-text for now, no hashing)
+      const isPasswordMatch = (user.password === password? true: false);
 
-// GET request (Read data)
-// app.get('/person', async (req, res) => {
-//   try{
-//     const data = await Person.find();
-//     console.log('data Fetched!!');
-//     res.status(200).json(data);
-//   }catch(err){
-//     console.log(err);
-//     res.status(500).json({error: 'Internal Server Error!!'})
-    
-//   }
-// })
+      if (!isPasswordMatch) {
+        return done(null, false, { message: "Incorrect password!" });
+      }
 
+      // If user exists and password is correct
+      return done(null, user);
+    } catch (error) {
+      return done(error);
+    }
+  })
+);
 
-// // POST request (Create Data)
-// app.post('/person', async (req, res) => {
-//   try {
-//     const data = req.body;
-//     const newPerson = new Person(data); // use model name
-//     const response = await newPerson.save(); // correct spelling
-//     console.log('Data Saved!!');
-//     res.status(200).json(response);
-//   } catch (err) {
-//     console.log(err);
-//     res.status(500).json({ error: 'Internal Server Error!!' });
-//   }
-// });
+// Initialize passport middleware
+app.use(passport.initialize());
 
-// Import the file from the Routes File for person
-const personRoutes = require('./Routes/personRoutes');
+// ---------------------- Routes ----------------------
 
-// use the routes
+// Protected home route (requires authentication)
+app.get('/', passport.authenticate('local', { session: false }), (req, res) => {
+  res.send("Welcome to the home page!");
+});
+
+// Person routes → Handles /person requests
 app.use('/person', personRoutes);
 
-
-
-
-
-// Get Method for Menu
-// app.get('/menu', async (req, res) => {
-//   try {
-//     const MenuData = await Menu.find();
-//     console.log('Menu Find');
-//     res.status(200).json(MenuData);
-//   } catch (err) {
-//     console.log(err);
-//     res.status(500).json({ error: 'Internal Server Error!!' });
-//   }
-// })
-
-// // POST Mehod for Menu
-// app.post('/menu', async (req, res) => {
-//   try {
-//     const data = req.body; // ✅ use different variable name
-//     const newMenu = new Menu(data); // ✅ keep model Menu
-//     const response = await newMenu.save(); // ✅ save to DB
-//     console.log('Menu Data Saved!!');
-//     res.status(201).json(response); // ✅ success code
-//   } catch (err) {
-//     console.log(err);
-//     res.status(500).json({ error: 'Internal Server Error!!' });
-//   }
-// });
-
-// Import the file from the Routes File
-const menuRoutes = require('./Routes/menuRouter');
-
-// use the routes
+// Menu routes → Handles /menu requests
 app.use('/menu', menuRoutes);
 
-
-
-
-
-// ------- This is the Routs who we can writ in the code but this is not a good practice 
-// app.get('/person/:workType', async(req, res) => {
-//     try {
-//         const workType = req.params.workType; // Extract the work type from the URL parameter
-//         if(workType == 'chef' || workType == 'manager' || workType == 'waiter') {
-            
-//             const response = await Person.find({work: workType});
-//             console.log('response fetched');
-//             res.status(200).json(response);
-//         } else {
-//             res.status(404).json({error: 'Invalid work type'});
-//         }
-//     } catch(err) {
-//         console.log(err);
-//         res.status(500).json({error: 'Internal Server Error'});
-//     }
-// });
-
-
-
+// ---------------------- Start the Server ----------------------
 app.listen(PORT, () => {
-  console.log(`App listening on port ${PORT}`)
-})
-
-
-
-
- 
+  console.log(`🚀 Server running at http://localhost:${PORT}`);
+});

@@ -1,11 +1,11 @@
 // First install Mongoose 
  
 import mongoose from 'mongoose';
-require('dotenv').config();
+// require('dotenv').config(); //.env file required where we used 
 
 
 // Define the mongoose URL
-const mongooseURL = process.env.mongoDB_URL;  // Replace Test with your database name
+const mongooseURL = "mongodb://localhost:27017/Test"  // Replace Test with your database name
 
 // For connecton the mongoodb 
 mongoose.connect(mongooseURL, {
